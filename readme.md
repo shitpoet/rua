@@ -20,7 +20,7 @@ Everything is implemented in the most basic way. No UI, no settings. Unfortunate
 
 Both apps use 48000 Hz 16-bit mono channels now. This can be suboptimal if desktop or mobile hardware does not support native 48kHz sample rate.
 
-Desktop app records 256 samples at a time. This can be too high of a rate in some cases. But should ok most of the time.
+Desktop app records 256 samples at a time. This can be too high of a rate in some cases. But should be ok most of the time.
 
 Both apps try to avoid buffering using different hard-coded conditions too much data, which can result in drops on lossy or slow connection or systems.
 
