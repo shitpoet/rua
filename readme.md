@@ -22,7 +22,7 @@ Both apps use 48000 Hz 16-bit mono channels now. This can be suboptimal if deskt
 
 Desktop app records 256 samples at a time. This can be too high of a rate in some cases. But should be ok most of the time.
 
-Both apps try to avoid buffering using different hard-coded conditions too much data, which can result in drops on lossy or slow connection or systems.
+Both apps try to avoid buffering using different hard-coded conditions. This can result in drops on unstable or slow connection.
 
 In some cases the mobile app can be unable to correcty detect broadcast address. In this case it uses `192.168.43.255`, which should work in hot spot (and I believe in usb tethering configurations), but some device can have different IP hard-coded in it or even use random network every time. In this case the apps will be unable to establish a connection between them. And there is no ability manualy enter peer's IP.
 
