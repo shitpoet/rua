@@ -1,4 +1,4 @@
-// rua desktop daemon, GPL3
+// rua desktop daemon, AGPL3
 // requires SDL2
 
 #include <stdio.h>
