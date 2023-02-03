@@ -149,13 +149,13 @@ void print_audio_satus(SDL_AudioDeviceID dev)
 }
 
 int open_play_dev() {
-	SDL_AudioSpec play_spec;
+  SDL_AudioSpec play_spec;
   SDL_zero(play_spec);
   play_spec.freq = FREQ;
   play_spec.format = AUDIO_S16;
   play_spec.channels = PLAY_CHANNELS;
   play_spec.samples = PLAY_SAMPLES;
-	play_spec.callback = NULL;
+  play_spec.callback = NULL;
   int play_dev = SDL_OpenAudioDevice(NULL, 0, &play_spec, NULL, 0);
   if (play_dev == 0) sdl_fail("sdl open output audio device");
   return play_dev;
