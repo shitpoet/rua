@@ -11,6 +11,7 @@ import android.media.*
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiManager.MulticastLock
 import android.os.Bundle
+import android.os.Process.setThreadPriority
 import android.os.StrictMode
 import android.os.StrictMode.ThreadPolicy
 import android.util.Log
@@ -29,8 +30,8 @@ import java.util.concurrent.Semaphore
 // VC can have higher latency but may do echo cancelation
 // VR can be even better on noise cancelation in some cases (I believe)
 // const val audioSource = MediaRecorder.AudioSource.MIC
-// const val audioSource = MediaRecorder.AudioSource.VOICE_COMMUNICATION
-const val audioSource = MediaRecorder.AudioSource.VOICE_RECOGNITION
+const val audioSource = MediaRecorder.AudioSource.VOICE_COMMUNICATION
+//const val audioSource = MediaRecorder.AudioSource.VOICE_RECOGNITION
 
 const val sampleRate = 48000 // note: should be equal to native sample rate
 const val port = 59100
@@ -74,10 +75,11 @@ var appId = ByteArray(4) // random, inited on app load
 fun setThreadPolicy() {
     val policy = ThreadPolicy.Builder().permitAll().build()
     StrictMode.setThreadPolicy(policy)
+    android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO);
 }
 
 fun log(s: String) {
-    Log.d("rua", s)
+    //Log.d("rua", s)
 }
 
 fun byteArrayToULong(buffer: ByteArray): ULong {
@@ -106,7 +108,7 @@ var avgRecvBurstSize = 3
 class PlayThread : Runnable {
     override fun run() {
         log("play thread run")
-        setThreadPolicy();
+        setThreadPolicy()
         try {
             assert(playChannels == 1)
             /*val audioTrack = AudioTrack(
@@ -164,12 +166,13 @@ class PlayThread : Runnable {
                 if (i and 0x7f == 0) {
                     minPlayQueue2 = (avgRecvBurstSize + 1).coerceIn(minPlayQueue + 1, receiveBufferFragments - 1)
                     maxPlayQueue = (avgRecvBurstSize * 3 / 2 + 1).coerceIn(minPlayQueue2 + 2, receiveBufferFragments - 1)
-                    log("minPlayQueue2 $minPlayQueue2  maxPlayQueue $maxPlayQueue  queue len $playQueueLen")
+                    // log("minPlayQueue2 $minPlayQueue2  maxPlayQueue $maxPlayQueue  queue len $playQueueLen")
                 }
                 
                 
                 if (playQueueLen <= minPlayQueue) {
-                    log("delay playback because the queue is almost empty (${playQueueLen} packets left)")
+                    // wait for more data
+                    // log("delay playback because the queue is almost empty (${playQueueLen} packets left)")
                     //pos = (pos + size) % receiveBuffer.size
                     receiveBufferQueueSemaphore.release()
                     
@@ -309,7 +312,7 @@ class ReceiveThread : Runnable {
     
         val loopbackAddress = InetAddress.getLoopbackAddress()
     
-        var lastSeq: ULong = 0UL;
+        var lastSeq: ULong = 0UL
         //var prevUnderrun = 0
     
         var prevReceiveTime = System.currentTimeMillis()
@@ -339,11 +342,11 @@ class ReceiveThread : Runnable {
                     receiveTimeDeltaSum += delta
                     receiveN++
                     if (receiveN > 121) {
-                        receiveTimeDeltaSum /= 2;
-                        receiveN /= 2;
+                        receiveTimeDeltaSum /= 2
+                        receiveN /= 2
                     }
                     
-                    burstSize++;
+                    burstSize++
                     burstTime += delta.toInt()
                     var idealTime = frameTimeFloat * burstSize
                     // log("delta $delta   burstTime $burstTime <=> ${idealTime}   ")
@@ -357,7 +360,7 @@ class ReceiveThread : Runnable {
                         
                         if (burstSizeN > 71) {
                             avgRecvBurstSize = (burstSizeSum / burstSizeN).toInt()
-                            log("avg recvBurstSize ${burstSizeSum / burstSizeN}")
+                            // log("avg recvBurstSize ${burstSizeSum / burstSizeN}")
                             burstSizeSum /= 2
                             burstSizeN /= 2
                         }
@@ -487,8 +490,13 @@ class RecThread(val context: Context) : Runnable {
             log("audioRecord nativeBufferSize ${nativeBufferSize}")
     
             //val buffer = ByteArray(audioInBufferSize / 2) // read part of the buffer
-            val frameSize = (nativeBufferSize * 2 / 3) / 2 // xiaomi redmi 6a android8.1
-    //            val frameSize = audioInBufferSize / 2
+            var frameSize = (nativeBufferSize * 2 / 3) / 2 // xiaomi redmi 6a android8.1
+            val typicalMTU = 1500
+            val headerSize = 20 + 8 // ipv4 + udp
+            while (frameSize >= typicalMTU - headerSize) {
+                frameSize /= 2
+            }
+            // val frameSize = audioInBufferSize / 2
             //socket.soTimeout = 2 * frameSize * 1000 / recChannels / sampleRate // ms (receive only)
             log("rec frame-size bytes " + frameSize)
             val frameSamples = frameSize / 2
@@ -527,7 +535,9 @@ class RecThread(val context: Context) : Runnable {
                     ///*if (read > 0) {
                         val now = System.currentTimeMillis()
                         val delta = now - prevReadTime
-                        //log("read " + read + " bytes, delta " + delta)
+                        if (delta < 19 || delta > 21) {
+                            log("read " + read + " bytes, delta " + delta)
+                        }
                         prevReadTime = now
     //                        val frameTime = frameSamples * 1000 / 48000;
     //                        if (delta < frameTime - 5) {
@@ -654,7 +664,9 @@ class MainActivity : AppCompatActivity() {
     
         val recThread = Thread(RecThread(this))
         recThread.start()
-    
+
+        // android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
+        
         /*val button1 = this.findViewById<Button>(R.id.button)
         button1.setOnClickListener(
             fun(view: View?) {
